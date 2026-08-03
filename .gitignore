@@ -1,0 +1,30 @@
+# Python virtual environment
+.venv/
+
+# Python-generated files
+__pycache__/
+*.py[cod]
+
+# Test and coverage output
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Package/build output
+build/
+dist/
+*.egg-info/
+
+# Local environment variables and secrets
+.env
+.env.*
+
+# Editor-specific local settings
+.vscode/
+
+# Runtime logs
+*.log
+
+# Operating-system files
+.DS_Store
+Thumbs.db
