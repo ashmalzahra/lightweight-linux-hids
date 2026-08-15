@@ -1,0 +1,90 @@
+# Literature Review
+
+## Lightweight Linux Host Intrusion Detection System
+
+**Status:** In progress
+
+## 1. Introduction
+
+This literature review examines foundational host-based intrusion detection concepts, rule-based detection, Linux security-event monitoring, file integrity monitoring, and existing open-source HIDS platforms. Its purpose is to establish the technical background for the proposed lightweight Linux HIDS and identify design and evaluation considerations relevant to the project.
+
+## 2. Host-Based Intrusion Detection
+
+A host-based intrusion detection and prevention system monitors the characteristics of an individual host and the events occurring within it for indications of suspicious activity. Relevant observations may include system logs, running processes, file access and modification, system or application configuration changes, and network traffic associated with the monitored host [1]. This host-focused visibility distinguishes a HIDS from a network-based system, which primarily examines traffic across network segments. Combining several host-monitoring techniques can improve detection coverage because each technique observes different aspects of system behaviour. However, detection policies must be configured and maintained carefully as the host environment changes, and increasing detection sensitivity may also increase the number of benign events reported as suspicious [1].
+
+## 3. Detection Approaches
+
+### 3.1 Rule-Based and Signature-Based Detection
+
+_To be written._
+
+### 3.2 Anomaly-Based Detection
+
+_To be written._
+
+### 3.3 Trade-offs Between Detection Approaches
+
+_To be written._
+
+## 4. Relevant Host Data Sources
+
+### 4.1 Authentication Logs
+
+_To be written._
+
+### 4.2 File Integrity
+
+_To be written._
+
+### 4.3 Processes
+
+_To be written._
+
+### 4.4 Users and Privileges
+
+_To be written._
+
+### 4.5 Scheduled Tasks
+
+_To be written._
+
+## 5. Existing Open-Source HIDS Platforms
+
+### 5.1 OSSEC
+
+_To be written._
+
+### 5.2 Wazuh
+
+_To be written._
+
+## 6. Design Implications for the Proposed HIDS
+
+_To be written after comparing the reviewed material._
+
+## 7. Identified Project Position
+
+_To be written carefully without claiming an unsupported universal research gap._
+
+## 8. Summary
+
+_To be written._
+
+## Source Notes
+
+| ID | Source | Main topic | Evidence relevant to this project | Limitations or caution |
+|---|---|---|---|---|
+| S1 | NIST SP 800-94 | IDPS and host-based detection | A host-based IDPS monitors the characteristics and events of an individual host and analyses them for possible suspicious activity.<br>Relevant data can include logs, running processes, file access and modification, configuration changes, and host network traffic.<br>Detection involves observing, recording, analysing, and alerting, while prevention additionally attempts to stop or reduce suspicious activity.<br>Combining multiple monitoring techniques can broaden detection coverage because each technique provides different visibility. | Published in 2007, so it is most appropriate for foundational concepts rather than current product capabilities.<br>Detection policies require configuration and tuning.<br>Increasing sensitivity may reduce missed activity while creating additional false positives and investigation workload. |
+| S2 | NIST SP 800-92 | Security log management |  | Published in 2006; use for foundational log-management principles |
+| S3 | Wazuh documentation: Data analysis | Collection, decoding, rules and alerts |  | Product documentation, not independent experimental evidence |
+| S4 | Wazuh documentation: File integrity monitoring | Baselines, checksums and file changes |  | Product documentation, not a comparative research study |
+
+## References
+
+[1] K. Scarfone and P. Mell, *Guide to Intrusion Detection and Prevention Systems (IDPS)*, NIST Special Publication 800-94, National Institute of Standards and Technology, 2007. https://doi.org/10.6028/NIST.SP.800-94
+
+[2] K. Kent and M. Souppaya, *Guide to Computer Security Log Management*, NIST Special Publication 800-92, National Institute of Standards and Technology, 2006. https://doi.org/10.6028/NIST.SP.800-92
+
+[3] Wazuh, “Data analysis,” *Wazuh Documentation*. https://documentation.wazuh.com/current/user-manual/ruleset/index.html
+
+[4] Wazuh, “How it works—File integrity monitoring,” *Wazuh Documentation*. https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/how-it-works.html
