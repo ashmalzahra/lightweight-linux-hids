@@ -16,7 +16,7 @@ A host-based intrusion detection and prevention system monitors the characterist
 
 ### 3.1 Rule-Based and Signature-Based Detection
 
-_To be written._
+Rule-based detection evaluates observed data against explicit conditions representing activity considered relevant or suspicious. Rules may examine individual fields, match known patterns, assign severity, and correlate repeated events over a defined period. This approach is transparent because an alert can identify the condition that caused it, but its coverage is limited by the available observations and predefined rules. For example, repeated credential guessing is categorized as brute-force activity in MITRE ATT&CK, but a detector must still choose a threshold and time window that distinguish suspicious repetition from ordinary authentication errors [5].
 
 ### 3.2 Anomaly-Based Detection
 
@@ -58,7 +58,7 @@ _To be written._
 
 ### 5.2 Wazuh
 
-_To be written._
+Wazuh uses a staged data-analysis pipeline in which collected log records are decoded into useful fields, compared against predefined or custom rules, and converted into alerts when rule conditions match [3]. Its file-integrity monitoring capability establishes a baseline of checksums and file attributes, then detects additions, modifications, and deletions by comparing later observations against that stored state [4]. These mechanisms motivate the proposed prototype’s separation of collection, normalisation, rule evaluation, and alert generation. However, Wazuh is a substantially broader platform, and its product documentation describes implemented capabilities rather than providing independent evidence of detection accuracy or resource efficiency.
 
 ## 6. Design Implications for the Proposed HIDS
 
@@ -78,8 +78,9 @@ _To be written._
 |---|---|---|---|---|
 | S1 | NIST SP 800-94 | IDPS and host-based detection | A host-based IDPS monitors the characteristics and events of an individual host and analyses them for possible suspicious activity.<br>Relevant data can include logs, running processes, file access and modification, configuration changes, and host network traffic.<br>Detection involves observing, recording, analysing, and alerting, while prevention additionally attempts to stop or reduce suspicious activity.<br>Combining multiple monitoring techniques can broaden detection coverage because each technique provides different visibility. | Published in 2007, so it is most appropriate for foundational concepts rather than current product capabilities.<br>Detection policies require configuration and tuning.<br>Increasing sensitivity may reduce missed activity while creating additional false positives and investigation workload. |
 | S2 | NIST SP 800-92 | Security logs, log lifecycle and log-management challenges | A log is a collection of entries describing events observed by systems, applications, or security tools.<br>Operating-system logs can contain authentication attempts, account and privilege changes, file activity, and policy changes.<br>Logs support detection, investigation, auditing, baselining, troubleshooting, and long-term trend analysis.<br>Differences in formats, fields, timestamps, and volume complicate collection and analysis.<br>Logs must be protected because modification or deletion can conceal activity and damage evidential reliability.<br>Accurate timestamps are required to reconstruct event order and correlate related activity. | Published in 2006; useful for foundational log-management principles rather than current Linux-specific implementation details.<br>The guidance is enterprise-oriented, while this project evaluates one host.<br>Not every relevant event is necessarily logged; visibility depends on source configuration. |
-| S3 | Wazuh documentation: Data analysis | Collection, decoding, rules and alerts |  | Product documentation, not independent experimental evidence |
-| S4 | Wazuh documentation: File integrity monitoring | Baselines, checksums and file changes |  | Product documentation, not a comparative research study |
+| S3 | Wazuh documentation: Data analysis | Collection, decoding, rules, and alerts | Wazuh collects raw log data from multiple sources, decodes it to extract useful structured fields, compares those fields against predefined or custom rules, and records alerts when rules match.<br>This staged pipeline supports separation between source-specific parsing and general detection logic.<br>Alerts can be stored in structured JSON form for later analysis. | Product documentation describes Wazuh's intended functionality but does not independently demonstrate detection accuracy or efficiency.<br>Wazuh uses a multi-component agent-and-server architecture that is broader than this single-host prototype.<br>Its implementation should inform, but not be copied as proof that our design will work. |
+| S4 | Wazuh documentation: File integrity monitoring | File baselines, checksums, attributes, and change detection | Wazuh can monitor configured files and directories periodically or in real time.<br>It stores baseline checksums and file attributes, then compares later observations against the saved state.<br>Differences can identify file creation, modification, deletion, or attribute changes.<br>This supports the use of a baseline-and-comparison design in the proposed file-integrity monitor. | Product documentation is not independent experimental evidence.<br>A detected file change is not necessarily malicious; legitimate updates can produce the same observation.<br>Wazuh's local and server-side databases are unnecessary for the smaller single-host prototype. |
+| S5 | MITRE ATT&CK: Brute Force T1110 | Credential-guessing behaviour and sub-techniques | Brute force involves obtaining account access through repetitive or systematic credential attempts.<br>Relevant sub-techniques include password guessing, password cracking, password spraying, and credential stuffing.<br>The project's controlled repeated-login-failure scenario most closely represents password guessing.<br>Repeated authentication failures within a time window can serve as observable evidence for a detection rule. | MITRE ATT&CK is a behavioural knowledge base, not an evaluation of our detector.<br>It does not prescribe one universally correct threshold or time window.<br>Repeated failures may result from benign mistakes, so an alert does not prove an attack. |
 
 ## References
 
@@ -90,3 +91,5 @@ _To be written._
 [3] Wazuh, “Data analysis,” *Wazuh Documentation*. https://documentation.wazuh.com/current/user-manual/ruleset/index.html
 
 [4] Wazuh, “How it works—File integrity monitoring,” *Wazuh Documentation*. https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/how-it-works.html
+
+[5] MITRE ATT&CK, “Brute Force, Technique T1110.” https://attack.mitre.org/techniques/T1110/
