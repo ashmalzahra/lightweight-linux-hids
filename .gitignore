@@ -28,3 +28,7 @@ dist/
 # Operating-system files
 .DS_Store
 Thumbs.db
+
+# HIDS runtime state and generated alerts
+.hids-state/
+var/
