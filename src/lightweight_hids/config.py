@@ -1,0 +1,50 @@
+"""Configuration loading and validation."""
+
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+
+class ConfigError(ValueError):
+    """Raised when configuration is missing or invalid."""
+
+
+def load_config(path: str | Path) -> dict[str, Any]:
+    """Load and validate a YAML configuration file."""
+    config_path = Path(path)
+
+    if not config_path.is_file():
+        raise ConfigError(f"configuration file not found: {config_path}")
+
+    with config_path.open("r", encoding="utf-8") as file:
+        data = yaml.safe_load(file)
+
+    if not isinstance(data, dict):
+        raise ConfigError("configuration root must be a mapping")
+
+    for section in ("runtime", "storage", "monitors"):
+        if section not in data:
+            raise ConfigError(f"missing required section: {section}")
+
+        if not isinstance(data[section], dict):
+            raise ConfigError(f"section must be a mapping: {section}")
+
+    poll_interval = data["runtime"].get("poll_interval_seconds")
+
+    if (
+        isinstance(poll_interval, bool)
+        or not isinstance(poll_interval, (int, float))
+        or poll_interval <= 0
+    ):
+        raise ConfigError(
+            "runtime.poll_interval_seconds must be a positive number"
+        )
+
+    for key in ("events_path", "alerts_path"):
+        value = data["storage"].get(key)
+
+        if not isinstance(value, str) or not value.strip():
+            raise ConfigError(f"storage.{key} must be a non-empty string")
+
+    return data

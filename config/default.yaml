@@ -1,0 +1,30 @@
+runtime:
+  poll_interval_seconds: 5
+  state_directory: .hids-state
+
+storage:
+  events_path: var/events.jsonl
+  alerts_path: var/alerts.jsonl
+
+monitors:
+  authentication:
+    enabled: true
+
+  file_integrity:
+    enabled: true
+    paths:
+      - var/lab/monitored
+
+  processes:
+    enabled: true
+
+  users:
+    enabled: true
+    administrative_groups:
+      - sudo
+
+  scheduled_tasks:
+    enabled: true
+    paths:
+      - /etc/crontab
+      - /etc/cron.d
