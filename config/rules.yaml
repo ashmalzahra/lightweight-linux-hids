@@ -1,0 +1,19 @@
+rules:
+  - id: FIM-001
+    kind: single_event
+    enabled: true
+    event_type: file_deleted
+    title: Monitored file deleted
+    description: A file in a monitored path was deleted.
+    severity: high
+    conditions: {}
+
+  - id: USER-001
+    kind: single_event
+    enabled: true
+    event_type: privilege_group_membership_added
+    title: User added to administrative group
+    description: A user was added to the sudo group.
+    severity: high
+    conditions:
+      group: sudo
