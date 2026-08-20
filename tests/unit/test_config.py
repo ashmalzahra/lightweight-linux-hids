@@ -17,6 +17,11 @@ storage:
 monitors:
   authentication:
     enabled: true
+
+  file_integrity:
+    enabled: true
+    paths:
+      - var/lab/monitored
 """
 
 
@@ -55,4 +60,58 @@ def test_load_config_rejects_nonpositive_poll_interval(tmp_path) -> None:
     )
 
     with pytest.raises(ConfigError, match="positive number"):
+        load_config(config_path)
+
+def test_config_rejects_empty_file_integrity_paths(tmp_path):
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        """
+runtime:
+  poll_interval_seconds: 5
+  state_directory: .hids-state
+
+storage:
+  events_path: var/events.jsonl
+  alerts_path: var/alerts.jsonl
+
+monitors:
+  file_integrity:
+    enabled: true
+    paths: []
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ConfigError,
+        match="monitors.file_integrity.paths",
+    ):
+        load_config(config_path)
+
+
+def test_config_rejects_non_boolean_file_integrity_enabled(tmp_path):
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        """
+runtime:
+  poll_interval_seconds: 5
+  state_directory: .hids-state
+
+storage:
+  events_path: var/events.jsonl
+  alerts_path: var/alerts.jsonl
+
+monitors:
+  file_integrity:
+    enabled: yes-please
+    paths:
+      - var/lab/monitored
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ConfigError,
+        match="monitors.file_integrity.enabled",
+    ):
         load_config(config_path)

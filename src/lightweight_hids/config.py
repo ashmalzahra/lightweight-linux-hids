@@ -47,4 +47,40 @@ def load_config(path: str | Path) -> dict[str, Any]:
         if not isinstance(value, str) or not value.strip():
             raise ConfigError(f"storage.{key} must be a non-empty string")
 
+    state_directory = data["runtime"].get("state_directory")
+
+    if not isinstance(state_directory, str) or not state_directory.strip():
+        raise ConfigError(
+            "runtime.state_directory must be a non-empty string"
+        )
+
+    file_integrity = data["monitors"].get("file_integrity")
+
+    if not isinstance(file_integrity, dict):
+        raise ConfigError(
+            "monitors.file_integrity must be a mapping"
+        )
+
+    enabled = file_integrity.get("enabled")
+
+    if not isinstance(enabled, bool):
+        raise ConfigError(
+            "monitors.file_integrity.enabled must be a boolean"
+        )
+
+    paths = file_integrity.get("paths")
+
+    if (
+        not isinstance(paths, list)
+        or not paths
+        or not all(
+            isinstance(path, str) and path.strip()
+            for path in paths
+        )
+    ):
+        raise ConfigError(
+            "monitors.file_integrity.paths must be "
+            "a non-empty list of strings"
+        )
+
     return data
