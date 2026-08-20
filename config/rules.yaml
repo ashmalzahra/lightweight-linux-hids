@@ -8,6 +8,33 @@ rules:
     severity: high
     conditions: {}
 
+  - id: FIM-002
+    kind: single_event
+    enabled: true
+    event_type: file_modified
+    title: Monitored file content modified
+    description: The contents of a file in a monitored path changed.
+    severity: high
+    conditions: {}
+
+  - id: FIM-003
+    kind: single_event
+    enabled: true
+    event_type: file_added
+    title: File added to monitored path
+    description: A new file appeared in a monitored path.
+    severity: medium
+    conditions: {}
+
+  - id: FIM-004
+    kind: single_event
+    enabled: true
+    event_type: file_metadata_changed
+    title: Monitored file permissions changed
+    description: The permission mode of a monitored file changed.
+    severity: medium
+    conditions: {}
+
   - id: USER-001
     kind: single_event
     enabled: true

@@ -1,5 +1,9 @@
 """Unit tests for configurable single-event rules."""
 
+from pathlib import Path
+
+import pytest
+
 from lightweight_hids.models import Event
 from lightweight_hids.rules import (
     RuleEngine,
@@ -98,3 +102,34 @@ rules:
     assert len(rules) == 1
     assert rules[0].rule_id == "TEST-001"
     assert rules[0].event_type == "file_deleted"
+
+
+@pytest.mark.parametrize(
+    ("event_type", "expected_rule_id"),
+    [
+        ("file_deleted", "FIM-001"),
+        ("file_modified", "FIM-002"),
+        ("file_added", "FIM-003"),
+        ("file_metadata_changed", "FIM-004"),
+    ],
+)
+def test_configured_file_integrity_rules_generate_alerts(
+    event_type,
+    expected_rule_id,
+) -> None:
+    project_root = Path(__file__).parents[2]
+    engine = RuleEngine(
+        load_rules(project_root / "config" / "rules.yaml")
+    )
+    event = Event(
+        event_type=event_type,
+        source="file_integrity",
+        host="test-host",
+        data={"path": "/tmp/monitored/example.txt"},
+    )
+
+    alerts = engine.evaluate(event)
+
+    assert len(alerts) == 1
+    assert alerts[0].rule_id == expected_rule_id
+    assert alerts[0].event_ids == [event.event_id]
