@@ -22,6 +22,7 @@ def test_deleted_file_produces_stored_event_and_alert(tmp_path) -> None:
     monitor = FileIntegrityMonitor(
         paths=[monitored_directory],
         baseline_path=tmp_path / "state" / "baseline.json",
+        active_state_path=tmp_path / "state" / "active.json",
         host="test-host",
     )
     application = HidsApplication(

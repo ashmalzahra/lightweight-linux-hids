@@ -126,6 +126,7 @@ def test_monitor_requires_baseline_before_scan(tmp_path):
     monitor = FileIntegrityMonitor(
         paths=[tmp_path / "monitored"],
         baseline_path=tmp_path / "baseline.json",
+        active_state_path=tmp_path / "active.json",
         host="test-host",
     )
 
@@ -148,6 +149,7 @@ def test_monitor_detects_change_after_initialization(tmp_path):
     monitor = FileIntegrityMonitor(
         paths=[monitored_directory],
         baseline_path=baseline_path,
+        active_state_path=tmp_path / "state" / "active.json",
         host="test-host",
     )
 
@@ -162,21 +164,51 @@ def test_monitor_detects_change_after_initialization(tmp_path):
     assert events[0].host == "test-host"
 
 
-def test_scan_does_not_replace_trusted_baseline(tmp_path):
+def test_scan_suppresses_duplicate_without_replacing_baseline(tmp_path):
     monitored_file = tmp_path / "example.txt"
     monitored_file.write_text("trusted content", encoding="utf-8")
 
     monitor = FileIntegrityMonitor(
         paths=[monitored_file],
         baseline_path=tmp_path / "baseline.json",
+        active_state_path=tmp_path / "active.json",
         host="test-host",
     )
 
     monitor.initialize()
+    trusted_hash = calculate_sha256(monitored_file)
     monitored_file.write_text("changed content", encoding="utf-8")
 
     first_events = monitor.scan()
     second_events = monitor.scan()
 
     assert first_events[0].event_type == "file_modified"
-    assert second_events[0].event_type == "file_modified"
+    assert second_events == []
+    saved_baseline = load_baseline(monitor.baseline_path)
+    baseline_state = saved_baseline[str(monitored_file.resolve())]
+    assert baseline_state.sha256 == trusted_hash
+    assert baseline_state.sha256 != calculate_sha256(monitored_file)
+
+
+def test_restored_then_repeated_change_is_reported_again(tmp_path):
+    monitored_file = tmp_path / "example.txt"
+    monitored_file.write_text("trusted content", encoding="utf-8")
+    monitor = FileIntegrityMonitor(
+        paths=[monitored_file],
+        baseline_path=tmp_path / "baseline.json",
+        active_state_path=tmp_path / "active.json",
+        host="test-host",
+    )
+    monitor.initialize()
+
+    monitored_file.write_text("changed content", encoding="utf-8")
+    first_change = monitor.scan()
+    monitored_file.write_text("trusted content", encoding="utf-8")
+    restored = monitor.scan()
+    monitored_file.write_text("changed content", encoding="utf-8")
+    repeated_change = monitor.scan()
+
+    assert len(first_change) == 1
+    assert restored == []
+    assert len(repeated_change) == 1
+    assert repeated_change[0].event_type == "file_modified"

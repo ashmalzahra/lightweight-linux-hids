@@ -101,6 +101,9 @@ def create_application(
                 baseline_path=(
                     state_directory / "file_integrity_baseline.json"
                 ),
+                active_state_path=(
+                    state_directory / "file_integrity_active.json"
+                ),
             )
         )
 

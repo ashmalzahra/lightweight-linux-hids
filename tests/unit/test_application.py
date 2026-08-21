@@ -34,6 +34,9 @@ def test_create_application_resolves_configured_paths(tmp_path) -> None:
     assert file_integrity_monitor.baseline_path == (
         tmp_path / ".hids-state" / "file_integrity_baseline.json"
     ).resolve()
+    assert file_integrity_monitor.active_state_path == (
+        tmp_path / ".hids-state" / "file_integrity_active.json"
+    ).resolve()
     assert authentication_monitor.state_path == (
         tmp_path / ".hids-state" / "authentication_cursor.json"
     ).resolve()
