@@ -46,4 +46,5 @@ def test_create_application_resolves_configured_paths(tmp_path) -> None:
     assert application.alert_store.path == (
         tmp_path / "var" / "alerts.jsonl"
     ).resolve()
+    assert application.poll_interval_seconds == 5.0
     assert len(application.rule_engine.rules) == 6

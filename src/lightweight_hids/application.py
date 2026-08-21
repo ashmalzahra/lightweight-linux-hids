@@ -34,11 +34,13 @@ class HidsApplication:
         rule_engine: RuleEngine,
         event_store: JsonlStore,
         alert_store: JsonlStore,
+        poll_interval_seconds: float,
     ) -> None:
         self.monitors = tuple(monitors)
         self.rule_engine = rule_engine
         self.event_store = event_store
         self.alert_store = alert_store
+        self.poll_interval_seconds = poll_interval_seconds
 
     def initialize_monitors(self) -> None:
         """Establish initial state for every enabled monitor."""
@@ -137,4 +139,7 @@ def create_application(
         rule_engine=rule_engine,
         event_store=event_store,
         alert_store=alert_store,
+        poll_interval_seconds=float(
+            config["runtime"]["poll_interval_seconds"]
+        ),
     )

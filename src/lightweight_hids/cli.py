@@ -5,6 +5,17 @@ from pathlib import Path
 from typing import Sequence
 
 from lightweight_hids.application import create_application
+from lightweight_hids.models import Alert, Event
+from lightweight_hids.runtime import run_polling
+
+
+def report_scan(events: list[Event], alerts: list[Alert]) -> None:
+    """Print a summary when a polling scan produces output."""
+    if events or alerts:
+        print(
+            f"Detected {len(events)} event(s); "
+            f"generated {len(alerts)} alert(s)."
+        )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -38,6 +49,10 @@ def build_parser() -> argparse.ArgumentParser:
         "scan",
         help="run one scan with every enabled monitor",
     )
+    subparsers.add_parser(
+        "run",
+        help="continuously poll until interrupted",
+    )
 
     return parser
 
@@ -56,9 +71,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"Initialized {len(application.monitors)} monitor(s).")
         return 0
 
-    events, alerts = application.scan_once()
+    if args.command == "scan":
+        events, alerts = application.scan_once()
+        print(
+            f"Detected {len(events)} event(s); "
+            f"generated {len(alerts)} alert(s)."
+        )
+        return 0
+
     print(
-        f"Detected {len(events)} event(s); "
-        f"generated {len(alerts)} alert(s)."
+        f"Monitoring every {application.poll_interval_seconds:g} "
+        f"second(s). Press Ctrl+C to stop."
     )
+
+    try:
+        run_polling(application, report=report_scan)
+    except KeyboardInterrupt:
+        print("Monitoring stopped.")
+
     return 0

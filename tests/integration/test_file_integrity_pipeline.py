@@ -30,6 +30,7 @@ def test_deleted_file_produces_stored_event_and_alert(tmp_path) -> None:
         rule_engine=rule_engine,
         event_store=event_store,
         alert_store=alert_store,
+        poll_interval_seconds=5.0,
     )
 
     application.initialize_monitors()
