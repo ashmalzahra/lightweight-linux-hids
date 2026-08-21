@@ -83,4 +83,29 @@ def load_config(path: str | Path) -> dict[str, Any]:
             "a non-empty list of strings"
         )
 
+    authentication = data["monitors"].get("authentication")
+
+    if not isinstance(authentication, dict):
+        raise ConfigError(
+            "monitors.authentication must be a mapping"
+        )
+
+    authentication_enabled = authentication.get("enabled")
+
+    if not isinstance(authentication_enabled, bool):
+        raise ConfigError(
+            "monitors.authentication.enabled must be a boolean"
+        )
+
+    authentication_log_path = authentication.get("log_path")
+
+    if (
+        not isinstance(authentication_log_path, str)
+        or not authentication_log_path.strip()
+    ):
+        raise ConfigError(
+            "monitors.authentication.log_path must be "
+            "a non-empty string"
+        )
+
     return data

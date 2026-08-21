@@ -3,6 +3,8 @@
 from pathlib import Path
 
 from lightweight_hids.application import create_application
+from lightweight_hids.monitors.authentication import AuthenticationMonitor
+from lightweight_hids.monitors.file_integrity import FileIntegrityMonitor
 
 
 def test_create_application_resolves_configured_paths(tmp_path) -> None:
@@ -14,11 +16,26 @@ def test_create_application_resolves_configured_paths(tmp_path) -> None:
         base_directory=tmp_path,
     )
 
-    assert application.monitor.paths == (
+    file_integrity_monitor = next(
+        monitor
+        for monitor in application.monitors
+        if isinstance(monitor, FileIntegrityMonitor)
+    )
+    authentication_monitor = next(
+        monitor
+        for monitor in application.monitors
+        if isinstance(monitor, AuthenticationMonitor)
+    )
+
+    assert len(application.monitors) == 2
+    assert file_integrity_monitor.paths == (
         (tmp_path / "var" / "lab" / "monitored").resolve(),
     )
-    assert application.monitor.baseline_path == (
+    assert file_integrity_monitor.baseline_path == (
         tmp_path / ".hids-state" / "file_integrity_baseline.json"
+    ).resolve()
+    assert authentication_monitor.state_path == (
+        tmp_path / ".hids-state" / "authentication_cursor.json"
     ).resolve()
     assert application.event_store.path == (
         tmp_path / "var" / "events.jsonl"

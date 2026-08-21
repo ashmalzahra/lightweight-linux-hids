@@ -9,6 +9,7 @@ storage:
 monitors:
   authentication:
     enabled: true
+    log_path: /var/log/auth.log
 
   file_integrity:
     enabled: true

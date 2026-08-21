@@ -1,15 +1,28 @@
 """Application orchestration for the HIDS components."""
 
 from pathlib import Path
+from typing import Iterable, Protocol
 
 from lightweight_hids.config import ConfigError, load_config
 from lightweight_hids.models import Alert, Event
+from lightweight_hids.monitors.authentication import AuthenticationMonitor
 from lightweight_hids.monitors.file_integrity import (
     FileIntegrityMonitor,
-    FileState,
 )
 from lightweight_hids.rules import RuleEngine, load_rules
 from lightweight_hids.storage import JsonlStore
+
+
+class Monitor(Protocol):
+    """Behavior required from every application monitor."""
+
+    def initialize(self) -> object:
+        """Establish the monitor's initial trusted state."""
+        ...
+
+    def scan(self) -> list[Event]:
+        """Return relevant events observed since initialization."""
+        ...
 
 
 class HidsApplication:
@@ -17,24 +30,28 @@ class HidsApplication:
 
     def __init__(
         self,
-        monitor: FileIntegrityMonitor,
+        monitors: Iterable[Monitor],
         rule_engine: RuleEngine,
         event_store: JsonlStore,
         alert_store: JsonlStore,
     ) -> None:
-        self.monitor = monitor
+        self.monitors = tuple(monitors)
         self.rule_engine = rule_engine
         self.event_store = event_store
         self.alert_store = alert_store
 
-    def initialize_baseline(self) -> dict[str, FileState]:
-        """Create or deliberately replace the trusted file baseline."""
-        return self.monitor.initialize()
+    def initialize_monitors(self) -> None:
+        """Establish initial state for every enabled monitor."""
+        for monitor in self.monitors:
+            monitor.initialize()
 
     def scan_once(self) -> tuple[list[Event], list[Alert]]:
         """Run one scan, persist events, and persist generated alerts."""
-        events = self.monitor.scan()
+        events: list[Event] = []
         alerts: list[Alert] = []
+
+        for monitor in self.monitors:
+            events.extend(monitor.scan())
 
         for event in events:
             self.event_store.append(event)
@@ -63,28 +80,45 @@ def create_application(
     rules_path: str | Path,
     base_directory: str | Path,
 ) -> HidsApplication:
-    """Build a configured file-integrity HIDS application."""
+    """Build a configured HIDS application."""
     base = Path(base_directory).resolve()
     config = load_config(resolve_path(base, config_path))
-    file_integrity = config["monitors"]["file_integrity"]
-
-    if not file_integrity["enabled"]:
-        raise ConfigError("file-integrity monitor is disabled")
-
-    monitored_paths = [
-        resolve_path(base, path)
-        for path in file_integrity["paths"]
-    ]
     state_directory = resolve_path(
         base,
         config["runtime"]["state_directory"],
     )
-    monitor = FileIntegrityMonitor(
-        paths=monitored_paths,
-        baseline_path=(
-            state_directory / "file_integrity_baseline.json"
-        ),
-    )
+    monitors: list[Monitor] = []
+    file_integrity = config["monitors"]["file_integrity"]
+
+    if file_integrity["enabled"]:
+        monitored_paths = [
+            resolve_path(base, path)
+            for path in file_integrity["paths"]
+        ]
+        monitors.append(
+            FileIntegrityMonitor(
+                paths=monitored_paths,
+                baseline_path=(
+                    state_directory / "file_integrity_baseline.json"
+                ),
+            )
+        )
+
+    authentication = config["monitors"]["authentication"]
+
+    if authentication["enabled"]:
+        monitors.append(
+            AuthenticationMonitor(
+                log_path=resolve_path(base, authentication["log_path"]),
+                state_path=(
+                    state_directory / "authentication_cursor.json"
+                ),
+            )
+        )
+
+    if not monitors:
+        raise ConfigError("at least one monitor must be enabled")
+
     rule_engine = RuleEngine(
         load_rules(resolve_path(base, rules_path))
     )
@@ -96,7 +130,7 @@ def create_application(
     )
 
     return HidsApplication(
-        monitor=monitor,
+        monitors=monitors,
         rule_engine=rule_engine,
         event_store=event_store,
         alert_store=alert_store,

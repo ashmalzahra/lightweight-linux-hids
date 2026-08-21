@@ -25,13 +25,13 @@ def test_deleted_file_produces_stored_event_and_alert(tmp_path) -> None:
         host="test-host",
     )
     application = HidsApplication(
-        monitor=monitor,
+        monitors=[monitor],
         rule_engine=rule_engine,
         event_store=event_store,
         alert_store=alert_store,
     )
 
-    application.initialize_baseline()
+    application.initialize_monitors()
     monitored_file.unlink()
 
     events, alerts = application.scan_once()

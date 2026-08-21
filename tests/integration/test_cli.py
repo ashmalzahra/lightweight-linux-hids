@@ -8,6 +8,17 @@ from lightweight_hids.storage import JsonlStore
 
 def test_cli_initializes_and_scans_file_integrity(tmp_path, capsys) -> None:
     project_root = Path(__file__).parents[2]
+    config_path = tmp_path / "config.yaml"
+    config_text = (project_root / "config" / "default.yaml").read_text(
+        encoding="utf-8"
+    )
+    config_path.write_text(
+        config_text.replace(
+            "authentication:\n    enabled: true",
+            "authentication:\n    enabled: false",
+        ),
+        encoding="utf-8",
+    )
     monitored_directory = tmp_path / "var" / "lab" / "monitored"
     monitored_directory.mkdir(parents=True)
     monitored_file = monitored_directory / "important.txt"
@@ -15,7 +26,7 @@ def test_cli_initializes_and_scans_file_integrity(tmp_path, capsys) -> None:
 
     common_arguments = [
         "--config",
-        str(project_root / "config" / "default.yaml"),
+        str(config_path),
         "--rules",
         str(project_root / "config" / "rules.yaml"),
         "--base-directory",
@@ -26,9 +37,7 @@ def test_cli_initializes_and_scans_file_integrity(tmp_path, capsys) -> None:
     initialize_output = capsys.readouterr().out
 
     assert initialize_result == 0
-    assert "Initialized file-integrity baseline with 1 file(s)." in (
-        initialize_output
-    )
+    assert "Initialized 1 monitor(s)." in initialize_output
 
     monitored_file.unlink()
 

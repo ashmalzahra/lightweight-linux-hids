@@ -36,7 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers.add_parser(
         "scan",
-        help="run one file-integrity scan",
+        help="run one scan with every enabled monitor",
     )
 
     return parser
@@ -52,11 +52,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     if args.command == "initialize":
-        baseline = application.initialize_baseline()
-        print(
-            f"Initialized file-integrity baseline with "
-            f"{len(baseline)} file(s)."
-        )
+        application.initialize_monitors()
+        print(f"Initialized {len(application.monitors)} monitor(s).")
         return 0
 
     events, alerts = application.scan_once()

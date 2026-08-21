@@ -17,6 +17,7 @@ storage:
 monitors:
   authentication:
     enabled: true
+    log_path: /var/log/auth.log
 
   file_integrity:
     enabled: true
@@ -113,5 +114,39 @@ monitors:
     with pytest.raises(
         ConfigError,
         match="monitors.file_integrity.enabled",
+    ):
+        load_config(config_path)
+
+
+def test_config_rejects_non_boolean_authentication_enabled(tmp_path):
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        VALID_CONFIG.replace(
+            "authentication:\n    enabled: true",
+            "authentication:\n    enabled: yes-please",
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ConfigError,
+        match="monitors.authentication.enabled",
+    ):
+        load_config(config_path)
+
+
+def test_config_rejects_empty_authentication_log_path(tmp_path):
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        VALID_CONFIG.replace(
+            "log_path: /var/log/auth.log",
+            "log_path: ''",
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ConfigError,
+        match="monitors.authentication.log_path",
     ):
         load_config(config_path)
