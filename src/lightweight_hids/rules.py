@@ -1,6 +1,7 @@
 """Configurable single-event detection rules."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -43,10 +44,76 @@ class SingleEventRule:
         return True
 
 
-class RuleEngine:
-    """Evaluate Events against configured single-event rules."""
+@dataclass(slots=True)
+class ThresholdRule:
+    """Correlate matching Events within a configurable time window."""
 
-    def __init__(self, rules: list[SingleEventRule]) -> None:
+    rule_id: str
+    event_type: str
+    title: str
+    description: str
+    severity: str
+    conditions: dict[str, Any]
+    group_by: tuple[str, ...]
+    threshold: int
+    window_seconds: float
+    enabled: bool = True
+    _history: dict[tuple[Any, ...], list[Event]] = field(
+        default_factory=dict,
+        init=False,
+        repr=False,
+    )
+
+    def evaluate(self, event: Event) -> Alert | None:
+        """Return an Alert when this Event reaches the threshold."""
+        if not self.enabled or event.event_type != self.event_type:
+            return None
+
+        for field_name, expected_value in self.conditions.items():
+            if field_name not in event.data:
+                return None
+
+            if event.data[field_name] != expected_value:
+                return None
+
+        if any(field_name not in event.data for field_name in self.group_by):
+            return None
+
+        group_key = tuple(event.data[field] for field in self.group_by)
+        cutoff = event.timestamp - timedelta(seconds=self.window_seconds)
+        recent_events = [
+            previous_event
+            for previous_event in self._history.get(group_key, [])
+            if previous_event.timestamp >= cutoff
+        ]
+        recent_events.append(event)
+        self._history[group_key] = recent_events
+
+        if len(recent_events) != self.threshold:
+            return None
+
+        return Alert(
+            rule_id=self.rule_id,
+            title=self.title,
+            description=self.description,
+            severity=self.severity,
+            event_ids=[item.event_id for item in recent_events],
+            evidence={
+                "count": len(recent_events),
+                "window_seconds": self.window_seconds,
+                "group": dict(zip(self.group_by, group_key)),
+                "events": [dict(item.data) for item in recent_events],
+            },
+        )
+
+
+DetectionRule = SingleEventRule | ThresholdRule
+
+
+class RuleEngine:
+    """Evaluate Events against configured detection rules."""
+
+    def __init__(self, rules: list[DetectionRule]) -> None:
         self.rules = tuple(rules)
 
     def evaluate(self, event: Event) -> list[Alert]:
@@ -54,25 +121,29 @@ class RuleEngine:
         alerts: list[Alert] = []
 
         for rule in self.rules:
-            if not rule.matches(event):
-                continue
+            if isinstance(rule, SingleEventRule):
+                if rule.matches(event):
+                    alerts.append(
+                        Alert(
+                            rule_id=rule.rule_id,
+                            title=rule.title,
+                            description=rule.description,
+                            severity=rule.severity,
+                            event_ids=[event.event_id],
+                            evidence=dict(event.data),
+                        )
+                    )
+            else:
+                threshold_alert = rule.evaluate(event)
 
-            alerts.append(
-                Alert(
-                    rule_id=rule.rule_id,
-                    title=rule.title,
-                    description=rule.description,
-                    severity=rule.severity,
-                    event_ids=[event.event_id],
-                    evidence=dict(event.data),
-                )
-            )
+                if threshold_alert is not None:
+                    alerts.append(threshold_alert)
 
         return alerts
 
 
-def load_rules(path: str | Path) -> list[SingleEventRule]:
-    """Load and validate single-event rules from YAML."""
+def load_rules(path: str | Path) -> list[DetectionRule]:
+    """Load and validate detection rules from YAML."""
     rules_path = Path(path)
 
     if not rules_path.is_file():
@@ -84,7 +155,7 @@ def load_rules(path: str | Path) -> list[SingleEventRule]:
     if not isinstance(data, dict) or not isinstance(data.get("rules"), list):
         raise RuleError("rules file must contain a rules list")
 
-    loaded_rules: list[SingleEventRule] = []
+    loaded_rules: list[DetectionRule] = []
     seen_ids: set[str] = set()
 
     for index, definition in enumerate(data["rules"]):
@@ -113,7 +184,7 @@ def load_rules(path: str | Path) -> list[SingleEventRule]:
         if rule_id in seen_ids:
             raise RuleError(f"duplicate rule id: {rule_id}")
 
-        if definition["kind"] != "single_event":
+        if definition["kind"] not in {"single_event", "threshold"}:
             raise RuleError(
                 f"unsupported rule kind: {definition['kind']}"
             )
@@ -135,17 +206,63 @@ def load_rules(path: str | Path) -> list[SingleEventRule]:
                 f"conditions must be a mapping for rule {rule_id}"
             )
 
-        loaded_rules.append(
-            SingleEventRule(
-                rule_id=rule_id,
-                event_type=definition["event_type"],
-                title=definition["title"],
-                description=definition["description"],
-                severity=severity,
-                conditions=conditions,
-                enabled=enabled,
+        common_arguments = {
+            "rule_id": rule_id,
+            "event_type": definition["event_type"],
+            "title": definition["title"],
+            "description": definition["description"],
+            "severity": severity,
+            "conditions": conditions,
+            "enabled": enabled,
+        }
+
+        if definition["kind"] == "single_event":
+            loaded_rules.append(SingleEventRule(**common_arguments))
+        else:
+            threshold = definition.get("threshold")
+            window_seconds = definition.get("window_seconds")
+            group_by = definition.get("group_by")
+
+            if (
+                isinstance(threshold, bool)
+                or not isinstance(threshold, int)
+                or threshold < 2
+            ):
+                raise RuleError(
+                    f"threshold must be an integer of at least 2 "
+                    f"for rule {rule_id}"
+                )
+
+            if (
+                isinstance(window_seconds, bool)
+                or not isinstance(window_seconds, (int, float))
+                or window_seconds <= 0
+            ):
+                raise RuleError(
+                    f"window_seconds must be positive for rule {rule_id}"
+                )
+
+            if (
+                not isinstance(group_by, list)
+                or not group_by
+                or not all(
+                    isinstance(field_name, str) and field_name.strip()
+                    for field_name in group_by
+                )
+            ):
+                raise RuleError(
+                    f"group_by must be a non-empty list of strings "
+                    f"for rule {rule_id}"
+                )
+
+            loaded_rules.append(
+                ThresholdRule(
+                    **common_arguments,
+                    group_by=tuple(group_by),
+                    threshold=threshold,
+                    window_seconds=float(window_seconds),
+                )
             )
-        )
         seen_ids.add(rule_id)
 
     return loaded_rules

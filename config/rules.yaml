@@ -35,6 +35,20 @@ rules:
     severity: medium
     conditions: {}
 
+  - id: AUTH-001
+    kind: threshold
+    enabled: true
+    event_type: authentication_failed
+    title: Repeated sudo authentication failures
+    description: Multiple sudo authentication failures occurred within a short period.
+    severity: high
+    conditions:
+      service: sudo
+    group_by:
+      - user
+    threshold: 3
+    window_seconds: 60
+
   - id: USER-001
     kind: single_event
     enabled: true
