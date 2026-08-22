@@ -269,3 +269,32 @@ def test_threshold_rule_expires_old_failures() -> None:
         alerts.extend(engine.evaluate(event))
 
     assert alerts == []
+
+
+def test_configured_process_rule_matches_only_lab_process() -> None:
+    project_root = Path(__file__).parents[2]
+    engine = RuleEngine(
+        load_rules(project_root / "config" / "rules.yaml")
+    )
+    lab_event = Event(
+        event_type="process_started",
+        source="processes",
+        host="test-host",
+        data={"name": "hids-lab-agent", "pid": 1001},
+        event_id="lab-event",
+    )
+    ordinary_event = Event(
+        event_type="process_started",
+        source="processes",
+        host="test-host",
+        data={"name": "sleep", "pid": 1002},
+        event_id="ordinary-event",
+    )
+
+    lab_alerts = engine.evaluate(lab_event)
+    ordinary_alerts = engine.evaluate(ordinary_event)
+
+    assert len(lab_alerts) == 1
+    assert lab_alerts[0].rule_id == "PROC-001"
+    assert lab_alerts[0].event_ids == ["lab-event"]
+    assert ordinary_alerts == []

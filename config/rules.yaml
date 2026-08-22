@@ -49,6 +49,16 @@ rules:
     threshold: 3
     window_seconds: 60
 
+  - id: PROC-001
+    kind: single_event
+    enabled: true
+    event_type: process_started
+    title: Controlled laboratory process started
+    description: The designated process-creation test executable was started.
+    severity: medium
+    conditions:
+      name: hids-lab-agent
+
   - id: USER-001
     kind: single_event
     enabled: true
