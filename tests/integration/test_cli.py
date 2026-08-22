@@ -51,7 +51,7 @@ def test_cli_initializes_and_scans_file_integrity(tmp_path, capsys) -> None:
     assert "EVENT  file_integrity  file_deleted" in scan_output
     assert f"path={monitored_file}" in scan_output
     assert "ALERT  FIM-001" in scan_output
-    assert "Summary: 1 event(s), 1 alert(s)." in scan_output
+    assert "Activity: 1 event(s) recorded; 1 alert(s)." in scan_output
 
     stored_events = JsonlStore(tmp_path / "var" / "events.jsonl").read_all()
     stored_alerts = JsonlStore(tmp_path / "var" / "alerts.jsonl").read_all()

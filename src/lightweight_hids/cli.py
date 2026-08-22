@@ -2,6 +2,7 @@
 
 import argparse
 import json
+from functools import partial
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -42,19 +43,26 @@ def format_alert(alert: Alert) -> str:
     )
 
 
-def report_scan(events: list[Event], alerts: list[Alert]) -> None:
-    """Print new event and alert details followed by a scan summary."""
+def report_scan(
+    events: list[Event],
+    alerts: list[Alert],
+    *,
+    verbose_events: bool = False,
+) -> None:
+    """Print alerts, an activity summary, and optional event details."""
     if not events and not alerts:
         return
 
-    for event in events:
-        print(format_event(event))
+    if verbose_events:
+        for event in events:
+            print(format_event(event))
 
     for alert in alerts:
         print(format_alert(alert))
 
     print(
-        f"Summary: {len(events)} event(s), {len(alerts)} alert(s)."
+        f"Activity: {len(events)} event(s) recorded; "
+        f"{len(alerts)} alert(s)."
     )
 
 
@@ -112,9 +120,14 @@ def build_parser() -> argparse.ArgumentParser:
         "scan",
         help="run one scan with every enabled monitor",
     )
-    subparsers.add_parser(
+    run_parser = subparsers.add_parser(
         "run",
         help="continuously poll until interrupted",
+    )
+    run_parser.add_argument(
+        "--verbose-events",
+        action="store_true",
+        help="print every event as well as alerts",
     )
     events_parser = subparsers.add_parser(
         "show-events",
@@ -168,10 +181,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "scan":
         events, alerts = application.scan_once()
-        report_scan(events, alerts)
+        report_scan(events, alerts, verbose_events=True)
 
         if not events and not alerts:
-            print("Summary: 0 event(s), 0 alert(s).")
+            print("Activity: 0 event(s) recorded; 0 alert(s).")
 
         return 0
 
@@ -214,7 +227,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     try:
-        run_polling(application, report=report_scan)
+        run_polling(
+            application,
+            report=partial(
+                report_scan,
+                verbose_events=args.verbose_events,
+            ),
+        )
     except KeyboardInterrupt:
         print("Monitoring stopped.")
 
