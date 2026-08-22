@@ -10,13 +10,52 @@ from lightweight_hids.models import Alert, Event
 from lightweight_hids.runtime import run_polling
 
 
-def report_scan(events: list[Event], alerts: list[Alert]) -> None:
-    """Print a summary when a polling scan produces output."""
-    if events or alerts:
-        print(
-            f"Detected {len(events)} event(s); "
-            f"generated {len(alerts)} alert(s)."
+def format_event(event: Event) -> str:
+    """Return a concise, human-readable description of one event."""
+    heading = f"EVENT  {event.source}  {event.event_type}"
+
+    if event.source == "processes":
+        details = (
+            f"name={event.data.get('name') or 'unknown'} "
+            f"pid={event.data.get('pid', 'unknown')} "
+            f"user={event.data.get('username') or 'unknown'}"
         )
+    elif event.source == "file_integrity":
+        details = f"path={event.data.get('path', 'unknown')}"
+    elif event.source == "authentication":
+        details = (
+            f"service={event.data.get('service') or 'unknown'} "
+            f"user={event.data.get('user') or 'unknown'} "
+            f"terminal={event.data.get('terminal') or 'unknown'}"
+        )
+    else:
+        details = f"event_id={event.event_id}"
+
+    return f"{heading}\n       {details}"
+
+
+def format_alert(alert: Alert) -> str:
+    """Return a concise, human-readable description of one alert."""
+    return (
+        f"ALERT  {alert.rule_id}  severity={alert.severity}\n"
+        f"       {alert.title}"
+    )
+
+
+def report_scan(events: list[Event], alerts: list[Alert]) -> None:
+    """Print new event and alert details followed by a scan summary."""
+    if not events and not alerts:
+        return
+
+    for event in events:
+        print(format_event(event))
+
+    for alert in alerts:
+        print(format_alert(alert))
+
+    print(
+        f"Summary: {len(events)} event(s), {len(alerts)} alert(s)."
+    )
 
 
 def positive_integer(value: str) -> int:
@@ -129,10 +168,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "scan":
         events, alerts = application.scan_once()
-        print(
-            f"Detected {len(events)} event(s); "
-            f"generated {len(alerts)} alert(s)."
-        )
+        report_scan(events, alerts)
+
+        if not events and not alerts:
+            print("Summary: 0 event(s), 0 alert(s).")
+
         return 0
 
     if args.command == "show-events":
