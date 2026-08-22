@@ -23,6 +23,9 @@ monitors:
     enabled: true
     paths:
       - var/lab/monitored
+
+  processes:
+    enabled: true
 """
 
 
@@ -148,5 +151,22 @@ def test_config_rejects_empty_authentication_log_path(tmp_path):
     with pytest.raises(
         ConfigError,
         match="monitors.authentication.log_path",
+    ):
+        load_config(config_path)
+
+
+def test_config_rejects_non_boolean_processes_enabled(tmp_path):
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        VALID_CONFIG.replace(
+            "processes:\n    enabled: true",
+            "processes:\n    enabled: yes-please",
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ConfigError,
+        match="monitors.processes.enabled",
     ):
         load_config(config_path)

@@ -108,4 +108,16 @@ def load_config(path: str | Path) -> dict[str, Any]:
             "a non-empty string"
         )
 
+    processes = data["monitors"].get("processes")
+
+    if not isinstance(processes, dict):
+        raise ConfigError("monitors.processes must be a mapping")
+
+    processes_enabled = processes.get("enabled")
+
+    if not isinstance(processes_enabled, bool):
+        raise ConfigError(
+            "monitors.processes.enabled must be a boolean"
+        )
+
     return data

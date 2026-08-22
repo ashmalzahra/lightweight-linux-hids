@@ -9,6 +9,7 @@ from lightweight_hids.monitors.authentication import AuthenticationMonitor
 from lightweight_hids.monitors.file_integrity import (
     FileIntegrityMonitor,
 )
+from lightweight_hids.monitors.processes import ProcessMonitor
 from lightweight_hids.rules import RuleEngine, load_rules
 from lightweight_hids.storage import JsonlStore
 
@@ -118,6 +119,15 @@ def create_application(
                 state_path=(
                     state_directory / "authentication_cursor.json"
                 ),
+            )
+        )
+
+    processes = config["monitors"]["processes"]
+
+    if processes["enabled"]:
+        monitors.append(
+            ProcessMonitor(
+                state_path=state_directory / "processes.json",
             )
         )
 

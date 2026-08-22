@@ -16,6 +16,9 @@ def test_cli_initializes_and_scans_file_integrity(tmp_path, capsys) -> None:
         config_text.replace(
             "authentication:\n    enabled: true",
             "authentication:\n    enabled: false",
+        ).replace(
+            "processes:\n    enabled: true",
+            "processes:\n    enabled: false",
         ),
         encoding="utf-8",
     )
