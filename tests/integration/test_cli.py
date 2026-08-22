@@ -55,3 +55,35 @@ def test_cli_initializes_and_scans_file_integrity(tmp_path, capsys) -> None:
 
     assert stored_events[0]["event_type"] == "file_deleted"
     assert stored_alerts[0]["rule_id"] == "FIM-001"
+
+    show_events_result = main(
+        [
+            *common_arguments,
+            "show-events",
+            "--source",
+            "file_integrity",
+            "--event-type",
+            "file_deleted",
+            "--limit",
+            "1",
+        ]
+    )
+    events_output = capsys.readouterr().out
+
+    assert show_events_result == 0
+    assert '"event_type": "file_deleted"' in events_output
+
+    show_alerts_result = main(
+        [
+            *common_arguments,
+            "show-alerts",
+            "--rule-id",
+            "FIM-001",
+            "--limit",
+            "1",
+        ]
+    )
+    alerts_output = capsys.readouterr().out
+
+    assert show_alerts_result == 0
+    assert '"rule_id": "FIM-001"' in alerts_output

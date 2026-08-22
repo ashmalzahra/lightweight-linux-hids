@@ -1,8 +1,9 @@
 """Command-line interface for the lightweight HIDS."""
 
 import argparse
+import json
 from pathlib import Path
-from typing import Sequence
+from typing import Any, Sequence
 
 from lightweight_hids.application import create_application
 from lightweight_hids.models import Alert, Event
@@ -16,6 +17,29 @@ def report_scan(events: list[Event], alerts: list[Alert]) -> None:
             f"Detected {len(events)} event(s); "
             f"generated {len(alerts)} alert(s)."
         )
+
+
+def positive_integer(value: str) -> int:
+    """Parse a command-line value that must be at least one."""
+    parsed = int(value)
+
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("value must be at least 1")
+
+    return parsed
+
+
+def print_records(records: list[dict[str, Any]]) -> None:
+    """Print stored JSON records in a readable form."""
+    if not records:
+        print("No matching records found.")
+        return
+
+    for index, record in enumerate(records):
+        if index:
+            print()
+
+        print(json.dumps(record, indent=2, sort_keys=True))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -53,6 +77,38 @@ def build_parser() -> argparse.ArgumentParser:
         "run",
         help="continuously poll until interrupted",
     )
+    events_parser = subparsers.add_parser(
+        "show-events",
+        help="show recent stored events",
+    )
+    events_parser.add_argument(
+        "--limit",
+        type=positive_integer,
+        default=5,
+        help="maximum number of matching events to show",
+    )
+    events_parser.add_argument(
+        "--source",
+        help="show only events from this monitor source",
+    )
+    events_parser.add_argument(
+        "--event-type",
+        help="show only this event type",
+    )
+    alerts_parser = subparsers.add_parser(
+        "show-alerts",
+        help="show recent stored alerts",
+    )
+    alerts_parser.add_argument(
+        "--limit",
+        type=positive_integer,
+        default=5,
+        help="maximum number of matching alerts to show",
+    )
+    alerts_parser.add_argument(
+        "--rule-id",
+        help="show only alerts produced by this rule",
+    )
 
     return parser
 
@@ -77,6 +133,39 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"Detected {len(events)} event(s); "
             f"generated {len(alerts)} alert(s)."
         )
+        return 0
+
+    if args.command == "show-events":
+        records = application.event_store.read_all()
+
+        if args.source:
+            records = [
+                record
+                for record in records
+                if record.get("source") == args.source
+            ]
+
+        if args.event_type:
+            records = [
+                record
+                for record in records
+                if record.get("event_type") == args.event_type
+            ]
+
+        print_records(records[-args.limit:])
+        return 0
+
+    if args.command == "show-alerts":
+        records = application.alert_store.read_all()
+
+        if args.rule_id:
+            records = [
+                record
+                for record in records
+                if record.get("rule_id") == args.rule_id
+            ]
+
+        print_records(records[-args.limit:])
         return 0
 
     print(
