@@ -59,6 +59,17 @@ rules:
     conditions:
       name: hids-lab-agent
 
+  - id: PROC-002
+    kind: single_event
+    enabled: true
+    event_type: process_started
+    title: Process executed from temporary directory
+    description: A process executable was launched from /tmp.
+    severity: medium
+    conditions:
+      executable:
+        starts_with: /tmp/
+
   - id: USER-001
     kind: single_event
     enabled: true

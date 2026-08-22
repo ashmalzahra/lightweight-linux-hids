@@ -7,6 +7,7 @@ import pytest
 
 from lightweight_hids.models import Event
 from lightweight_hids.rules import (
+    RuleError,
     RuleEngine,
     SingleEventRule,
     ThresholdRule,
@@ -169,6 +170,28 @@ rules:
     assert rules[0].window_seconds == 60.0
 
 
+def test_load_rule_rejects_unknown_condition_operator(tmp_path) -> None:
+    rules_path = tmp_path / "rules.yaml"
+    rules_path.write_text(
+        """
+rules:
+  - id: TEST-001
+    kind: single_event
+    event_type: process_started
+    title: Test rule
+    description: Test description.
+    severity: medium
+    conditions:
+      executable:
+        ends_with: suspicious
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuleError, match="invalid condition operator"):
+        load_rules(rules_path)
+
+
 @pytest.mark.parametrize(
     ("event_type", "expected_rule_id"),
     [
@@ -287,14 +310,33 @@ def test_configured_process_rule_matches_only_lab_process() -> None:
         event_type="process_started",
         source="processes",
         host="test-host",
-        data={"name": "sleep", "pid": 1002},
+        data={
+            "name": "sleep",
+            "pid": 1002,
+            "executable": "/usr/bin/sleep",
+        },
         event_id="ordinary-event",
+    )
+    temporary_event = Event(
+        event_type="process_started",
+        source="processes",
+        host="test-host",
+        data={
+            "name": "untrusted-tool",
+            "pid": 1003,
+            "executable": "/tmp/hids-lab/untrusted-tool",
+        },
+        event_id="temporary-event",
     )
 
     lab_alerts = engine.evaluate(lab_event)
     ordinary_alerts = engine.evaluate(ordinary_event)
+    temporary_alerts = engine.evaluate(temporary_event)
 
     assert len(lab_alerts) == 1
     assert lab_alerts[0].rule_id == "PROC-001"
     assert lab_alerts[0].event_ids == ["lab-event"]
     assert ordinary_alerts == []
+    assert len(temporary_alerts) == 1
+    assert temporary_alerts[0].rule_id == "PROC-002"
+    assert temporary_alerts[0].event_ids == ["temporary-event"]

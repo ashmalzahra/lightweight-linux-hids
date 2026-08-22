@@ -116,6 +116,13 @@ Rule `PROC-001` currently detects the controlled laboratory executable named
 through the complete event, rule, alert, and storage pipeline. It is not a
 general claim that arbitrary malicious processes can be identified by name.
 
+Rule `PROC-002` detects a process whose executable path starts with `/tmp/`.
+This is a behaviour-based indicator: it considers execution location rather
+than requiring a known process name. Temporary directories are writable and
+can be used to stage executable files, but legitimate software can also run
+from them. The rule therefore demonstrates a useful but imperfect detection
+trade-off and does not prove malicious intent.
+
 Polling has an inherent visibility limitation: a process that starts and exits
 entirely between two scans might not appear in either snapshot. In addition,
 normal Linux operation creates many short-lived user-space and kernel
@@ -145,5 +152,4 @@ This policy reduces console clutter without discarding evidence. It does not
 classify hidden routine events as benign. Filtering observations at collection
 time could lower event volume and computational cost, but could also create
 detection blind spots. That trade-off will be considered during evaluation.
-
 

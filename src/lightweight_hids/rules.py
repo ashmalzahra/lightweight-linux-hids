@@ -14,6 +14,33 @@ class RuleError(ValueError):
     """Raised when a detection-rule definition is invalid."""
 
 
+def conditions_match(
+    conditions: dict[str, Any],
+    event_data: dict[str, Any],
+) -> bool:
+    """Return True when event data satisfies every rule condition."""
+    for field_name, expected_value in conditions.items():
+        if field_name not in event_data:
+            return False
+
+        actual_value = event_data[field_name]
+
+        if isinstance(expected_value, dict):
+            prefix = expected_value.get("starts_with")
+
+            if (
+                set(expected_value) != {"starts_with"}
+                or not isinstance(actual_value, str)
+                or not isinstance(prefix, str)
+                or not actual_value.startswith(prefix)
+            ):
+                return False
+        elif actual_value != expected_value:
+            return False
+
+    return True
+
+
 @dataclass(frozen=True, slots=True)
 class SingleEventRule:
     """A rule evaluated against one Event at a time."""
@@ -34,14 +61,7 @@ class SingleEventRule:
         if event.event_type != self.event_type:
             return False
 
-        for field_name, expected_value in self.conditions.items():
-            if field_name not in event.data:
-                return False
-
-            if event.data[field_name] != expected_value:
-                return False
-
-        return True
+        return conditions_match(self.conditions, event.data)
 
 
 @dataclass(slots=True)
@@ -69,12 +89,8 @@ class ThresholdRule:
         if not self.enabled or event.event_type != self.event_type:
             return None
 
-        for field_name, expected_value in self.conditions.items():
-            if field_name not in event.data:
-                return None
-
-            if event.data[field_name] != expected_value:
-                return None
+        if not conditions_match(self.conditions, event.data):
+            return None
 
         if any(field_name not in event.data for field_name in self.group_by):
             return None
@@ -205,6 +221,25 @@ def load_rules(path: str | Path) -> list[DetectionRule]:
             raise RuleError(
                 f"conditions must be a mapping for rule {rule_id}"
             )
+
+        for field_name, expected_value in conditions.items():
+            if not isinstance(field_name, str) or not field_name.strip():
+                raise RuleError(
+                    f"condition names must be non-empty strings "
+                    f"for rule {rule_id}"
+                )
+
+            if isinstance(expected_value, dict):
+                prefix = expected_value.get("starts_with")
+
+                if (
+                    set(expected_value) != {"starts_with"}
+                    or not isinstance(prefix, str)
+                    or not prefix
+                ):
+                    raise RuleError(
+                        f"invalid condition operator for rule {rule_id}"
+                    )
 
         common_arguments = {
             "rule_id": rule_id,
